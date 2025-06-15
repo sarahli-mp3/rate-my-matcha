@@ -16,7 +16,7 @@ type Props = {
 const grayscale = (r: number, g: number, b: number) =>
   Math.round(0.299 * r + 0.587 * g + 0.114 * b);
 
-// Naive cup+matcha detector
+// Improved cup+matcha detector
 const detectCupAndMatchaColor = async (
   imageDataUrl: string
 ): Promise<CupDetectionResult> => {
@@ -35,18 +35,15 @@ const detectCupAndMatchaColor = async (
       // ImageData
       const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-      // 1. Very primitive cup detection:
-      //    Look for a large bright ellipse (the cup rim) with green in the center.
-      //    (In real apps, use ML; here, just color math.)
-
-      // Rim detection: search for a bright (almost white) ellipse in the central 80% region
+      // Improved cup detection with more realistic thresholds
       let rimPixels = 0;
       let centerGreenPixels = 0;
       let totalCenter = 0;
       let sumR = 0, sumG = 0, sumB = 0;
-      let centerRadius = Math.min(width, height) * 0.23;
+      let centerRadius = Math.min(width, height) * 0.2; // Smaller radius for more focused detection
 
       const cx = width / 2, cy = height / 2;
+      
       for (let y = 0; y < height; ++y) {
         for (let x = 0; x < width; ++x) {
           const dx = x - cx, dy = y - cy;
@@ -54,60 +51,87 @@ const detectCupAndMatchaColor = async (
           const idx = (y * width + x) * 4;
           const r = data[idx], g = data[idx + 1], b = data[idx + 2], a = data[idx + 3];
 
-          // Rim: bright area in 80%+ of the image width, within a ring 
+          // More strict rim detection - looking for very bright pixels in a ring
           if (
-            d > centerRadius * 0.9 &&
-            d < centerRadius * 1.25 &&
-            grayscale(r, g, b) > 190 &&
-            a > 210
+            d > centerRadius * 1.2 &&
+            d < centerRadius * 2.0 &&
+            grayscale(r, g, b) > 220 && // Much brighter threshold
+            a > 240 && // Higher alpha requirement
+            Math.abs(r - g) < 30 && Math.abs(g - b) < 30 // More neutral colors for cup rim
           ) {
             rimPixels++;
           }
 
-          // Center: inside central region; count only for green analysis
-          if (d < centerRadius * 0.85 && a > 220) {
+          // Center analysis - more focused on actual matcha color
+          if (d < centerRadius && a > 200) {
             sumR += r;
             sumG += g;
             sumB += b;
             totalCenter++;
-            // Consider it matcha if green is dominant and above threshold
-            if (g > 100 && g > r && g > b && r - b < 50) {
+            
+            // Better matcha color detection
+            // Good matcha should be vibrant green with G significantly higher than R and B
+            if (
+              g > 80 && // Minimum green threshold
+              g > r + 20 && // Green should be notably higher than red
+              g > b + 30 && // Green should be much higher than blue
+              r < 180 && // Not too bright (avoid white/cream)
+              b < 150    // Keep blue low for true green
+            ) {
               centerGreenPixels++;
             }
           }
         }
       }
 
-      // Define cupFound if we found enough "rim" pixels and green center (very rough)
-      const cupFound =
-        rimPixels > (width * height * 0.0025) &&
-        centerGreenPixels > (totalCenter * 0.1);
-      // Color rating by greenness in center (average color in Lab could be used, but let's use relative G here as a stand-in)
+      // More realistic cup detection thresholds
+      const minRimPixels = width * height * 0.005; // Minimum rim pixels needed
+      const minGreenRatio = 0.15; // At least 15% of center should be green for matcha
+      
+      const cupFound = 
+        rimPixels > minRimPixels && 
+        totalCenter > 100 && // Ensure we have enough center pixels to analyze
+        centerGreenPixels > (totalCenter * minGreenRatio);
+
+      // Improved color scoring
       const avgR = totalCenter ? sumR / totalCenter : 0;
       const avgG = totalCenter ? sumG / totalCenter : 0;
       const avgB = totalCenter ? sumB / totalCenter : 0;
 
-      // "Matcha Greenness" Score: higher G, lower B and closer R, best is a lively green.
       let colorScore = 0;
-      if (cupFound) {
-        // Score: purely color math, ballpark estimation
-        colorScore = Math.max(
-          1,
-          Math.round(
-            10 *
-              ((avgG - avgR * 0.8 - avgB * 0.8) / 100 +
-                (centerGreenPixels / (totalCenter || 1)) * 0.7)
-          )
-        );
-        colorScore = Math.min(10, Math.max(1, colorScore));
+      if (cupFound && totalCenter > 0) {
+        // Calculate greenness score based on multiple factors
+        const greenDominance = Math.max(0, (avgG - avgR) + (avgG - avgB)) / 100;
+        const greenIntensity = avgG / 255;
+        const greenRatio = centerGreenPixels / totalCenter;
+        
+        // Combine factors for final score
+        const rawScore = (greenDominance * 0.4 + greenIntensity * 0.3 + greenRatio * 0.3) * 10;
+        colorScore = Math.max(1, Math.min(10, Math.round(rawScore)));
+        
+        // Bonus points for very vibrant green
+        if (avgG > 120 && avgG > avgR + 40 && avgG > avgB + 50) {
+          colorScore = Math.min(10, colorScore + 1);
+        }
       }
 
-      // avgColor—show for fun as circle swatch
+      // avgColor for display
       const avgColor =
         "#" +
         [avgR, avgG, avgB]
           .map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0"))
           .join("");
+
+      console.log('Detection results:', {
+        rimPixels,
+        minRimPixels,
+        centerGreenPixels,
+        totalCenter,
+        greenRatio: centerGreenPixels / totalCenter,
+        avgR, avgG, avgB,
+        cupFound,
+        colorScore
+      });
 
       resolve({
         cupFound,
@@ -127,7 +151,7 @@ const MatchaCupDetector: React.FC<Props> = ({ imageDataUrl, onResult, onRetake }
     detectCupAndMatchaColor(imageDataUrl).then((result) => {
       if (mounted) {
         setLoading(false);
-        // Add DL: small timeout for UX
+        // Add small timeout for UX
         setTimeout(() => onResult(result), 800);
       }
     });
