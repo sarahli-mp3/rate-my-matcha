@@ -13,10 +13,32 @@ type Props = {
   onRetake: () => void;
 };
 
-const grayscale = (r: number, g: number, b: number) =>
-  Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+// Ideal matcha color ranges
+const IDEAL_MATCHA_COLORS = [
+  { name: "Bright ceremonial", hex: "#7BAF5C", r: 123, g: 175, b: 92 },
+  { name: "Creamy latte", hex: "#A3C585", r: 163, g: 197, b: 133 },
+  { name: "Earthy mid-tone", hex: "#8FB26B", r: 143, g: 178, b: 107 },
+  { name: "Vibrant whisked", hex: "#76A646", r: 118, g: 166, b: 70 }
+];
 
-// Improved cup+matcha detector
+// Calculate color distance between two RGB colors
+const colorDistance = (r1: number, g1: number, b1: number, r2: number, g2: number, b2: number) => {
+  return Math.sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2);
+};
+
+// Check if pixel is inside cup shape (elliptical with narrower bottom)
+const isInsideCupShape = (x: number, y: number, cx: number, cy: number, width: number, height: number) => {
+  const relX = (x - cx) / (width * 0.35); // Cup width
+  const relY = (y - cy) / (height * 0.4);  // Cup height
+  
+  // Create cup shape - wider at top, narrower at bottom
+  const cupWidth = 1 - (relY * 0.3); // Gets narrower as we go down
+  const ellipse = (relX / cupWidth) ** 2 + relY ** 2;
+  
+  return ellipse <= 1 && relY > -0.8 && relY < 0.8;
+};
+
+// Improved matcha color detector focusing on cup-shaped area
 const detectCupAndMatchaColor = async (
   imageDataUrl: string
 ): Promise<CupDetectionResult> => {
@@ -35,100 +57,102 @@ const detectCupAndMatchaColor = async (
       // ImageData
       const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-      // Improved cup detection with more realistic thresholds
-      let rimPixels = 0;
-      let centerGreenPixels = 0;
-      let totalCenter = 0;
+      let cupPixels = 0;
+      let matchaPixels = 0;
       let sumR = 0, sumG = 0, sumB = 0;
-      let centerRadius = Math.min(width, height) * 0.2; // Smaller radius for more focused detection
+      let bestMatchaPixels = 0;
 
       const cx = width / 2, cy = height / 2;
       
       for (let y = 0; y < height; ++y) {
         for (let x = 0; x < width; ++x) {
-          const dx = x - cx, dy = y - cy;
-          const d = Math.sqrt(dx * dx + dy * dy);
+          // Only analyze pixels inside the cup shape
+          if (!isInsideCupShape(x, y, cx, cy, width, height)) continue;
+          
           const idx = (y * width + x) * 4;
           const r = data[idx], g = data[idx + 1], b = data[idx + 2], a = data[idx + 3];
-
-          // More strict rim detection - looking for very bright pixels in a ring
-          if (
-            d > centerRadius * 1.2 &&
-            d < centerRadius * 2.0 &&
-            grayscale(r, g, b) > 220 && // Much brighter threshold
-            a > 240 && // Higher alpha requirement
-            Math.abs(r - g) < 30 && Math.abs(g - b) < 30 // More neutral colors for cup rim
-          ) {
-            rimPixels++;
-          }
-
-          // Center analysis - more focused on actual matcha color
-          if (d < centerRadius && a > 200) {
-            sumR += r;
-            sumG += g;
-            sumB += b;
-            totalCenter++;
+          
+          if (a < 200) continue; // Skip transparent pixels
+          
+          cupPixels++;
+          sumR += r;
+          sumG += g;
+          sumB += b;
+          
+          // Check if pixel matches matcha color criteria
+          const matchesMatchaCriteria = 
+            g >= 130 && g <= 180 && // Green channel in ideal range
+            r < 120 &&              // Red lower than specified
+            b < 100 &&              // Blue lower than specified
+            g > r + 10 &&           // Green dominance over red
+            g > b + 20;             // Green dominance over blue
+          
+          if (matchesMatchaCriteria) {
+            matchaPixels++;
             
-            // Better matcha color detection
-            // Good matcha should be vibrant green with G significantly higher than R and B
-            if (
-              g > 80 && // Minimum green threshold
-              g > r + 20 && // Green should be notably higher than red
-              g > b + 30 && // Green should be much higher than blue
-              r < 180 && // Not too bright (avoid white/cream)
-              b < 150    // Keep blue low for true green
-            ) {
-              centerGreenPixels++;
+            // Check how close to ideal matcha colors
+            const minDistance = Math.min(
+              ...IDEAL_MATCHA_COLORS.map(ideal => 
+                colorDistance(r, g, b, ideal.r, ideal.g, ideal.b)
+              )
+            );
+            
+            // If very close to ideal colors (distance < 50), count as best matcha
+            if (minDistance < 50) {
+              bestMatchaPixels++;
             }
           }
         }
       }
 
-      // More realistic cup detection thresholds
-      const minRimPixels = width * height * 0.005; // Minimum rim pixels needed
-      const minGreenRatio = 0.15; // At least 15% of center should be green for matcha
+      // Calculate average color in cup area
+      const avgR = cupPixels ? sumR / cupPixels : 0;
+      const avgG = cupPixels ? sumG / cupPixels : 0;
+      const avgB = cupPixels ? sumB / cupPixels : 0;
+
+      // Determine if we found a cup with matcha
+      const matchaRatio = cupPixels > 0 ? matchaPixels / cupPixels : 0;
+      const bestMatchaRatio = cupPixels > 0 ? bestMatchaPixels / cupPixels : 0;
       
       const cupFound = 
-        rimPixels > minRimPixels && 
-        totalCenter > 100 && // Ensure we have enough center pixels to analyze
-        centerGreenPixels > (totalCenter * minGreenRatio);
+        cupPixels > 1000 && // Minimum pixels in cup area
+        matchaRatio > 0.1;  // At least 10% of cup area has matcha-like color
 
-      // Improved color scoring
-      const avgR = totalCenter ? sumR / totalCenter : 0;
-      const avgG = totalCenter ? sumG / totalCenter : 0;
-      const avgB = totalCenter ? sumB / totalCenter : 0;
-
+      // Calculate color score based on matcha quality
       let colorScore = 0;
-      if (cupFound && totalCenter > 0) {
-        // Calculate greenness score based on multiple factors
-        const greenDominance = Math.max(0, (avgG - avgR) + (avgG - avgB)) / 100;
-        const greenIntensity = avgG / 255;
-        const greenRatio = centerGreenPixels / totalCenter;
+      if (cupFound) {
+        // Base score from matcha pixel ratio (0-4 points)
+        const ratioScore = Math.min(4, matchaRatio * 10);
         
-        // Combine factors for final score
-        const rawScore = (greenDominance * 0.4 + greenIntensity * 0.3 + greenRatio * 0.3) * 10;
-        colorScore = Math.max(1, Math.min(10, Math.round(rawScore)));
+        // Bonus for colors close to ideal matcha (0-3 points)
+        const idealScore = Math.min(3, bestMatchaRatio * 15);
         
-        // Bonus points for very vibrant green
-        if (avgG > 120 && avgG > avgR + 40 && avgG > avgB + 50) {
-          colorScore = Math.min(10, colorScore + 1);
-        }
+        // Bonus for good green dominance (0-2 points)
+        const greenDominance = avgG > avgR + 20 && avgG > avgB + 30 ? 2 : 
+                              avgG > avgR + 10 && avgG > avgB + 15 ? 1 : 0;
+        
+        // Bonus for being in ideal green range (0-1 point)
+        const greenRangeBonus = avgG >= 130 && avgG <= 180 ? 1 : 0;
+        
+        colorScore = Math.min(10, Math.max(1, Math.round(ratioScore + idealScore + greenDominance + greenRangeBonus)));
       }
 
-      // avgColor for display
+      // Format average color
       const avgColor =
         "#" +
         [avgR, avgG, avgB]
           .map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0"))
           .join("");
 
-      console.log('Detection results:', {
-        rimPixels,
-        minRimPixels,
-        centerGreenPixels,
-        totalCenter,
-        greenRatio: centerGreenPixels / totalCenter,
-        avgR, avgG, avgB,
+      console.log('Cup-shaped matcha detection results:', {
+        cupPixels,
+        matchaPixels,
+        bestMatchaPixels,
+        matchaRatio: matchaRatio.toFixed(3),
+        bestMatchaRatio: bestMatchaRatio.toFixed(3),
+        avgR: avgR.toFixed(1), 
+        avgG: avgG.toFixed(1), 
+        avgB: avgB.toFixed(1),
         cupFound,
         colorScore
       });
@@ -167,10 +191,35 @@ const MatchaCupDetector: React.FC<Props> = ({ imageDataUrl, onResult, onRetake }
         alt="captured"
         className={loading ? "opacity-40 blur-sm grayscale" : "object-cover w-full h-full"}
       />
+      {/* Cup shape overlay to show analysis area */}
+      <div className="absolute inset-0 pointer-events-none">
+        <svg className="w-full h-full" viewBox="0 0 320 240">
+          <ellipse 
+            cx="160" 
+            cy="120" 
+            rx="56" 
+            ry="48"
+            fill="none" 
+            stroke="rgba(123, 175, 92, 0.6)" 
+            strokeWidth="2"
+            strokeDasharray="4,4"
+          />
+          <ellipse 
+            cx="160" 
+            cy="135" 
+            rx="45" 
+            ry="35"
+            fill="none" 
+            stroke="rgba(123, 175, 92, 0.4)" 
+            strokeWidth="1"
+            strokeDasharray="2,2"
+          />
+        </svg>
+      </div>
       {loading && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 gap-1">
           <span className="loader mb-2 animate-spin h-8 w-8 rounded-full border-4 border-green-300 border-t-green-700"></span>
-          <span className="font-bold text-green-700 tracking-tight">Analyzing…</span>
+          <span className="font-bold text-green-700 tracking-tight">Analyzing matcha…</span>
         </div>
       )}
       <button
