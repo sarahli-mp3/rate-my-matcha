@@ -1,10 +1,12 @@
 
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+// Use the explicit credentials from your project (see src/integrations/supabase/client.ts)
+const SUPABASE_URL = "https://urtwmfqncuwopkvzdcxs.supabase.co";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVydHdtZnFuY3V3b3BrdnpkY3hzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAwMjI4OTEsImV4cCI6MjA2NTU5ODg5MX0.86DzUecU0zF5ZlbOaPWXBeTCJEwI2AFkxyigTi_v2iI";
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 type MatchaRatingRecord = {
   image_url: string;
