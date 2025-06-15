@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from "react";
 import { Camera } from "lucide-react";
 import MatchaCupDetector from "./MatchaCupDetector";
@@ -6,6 +5,9 @@ import MatchaRatingCard from "./MatchaRatingCard";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
+import { insertMatchaRating, uploadMatchaImage } from "@/supabase/matcha";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type Step = "scanning" | "processing" | "done";
 
@@ -17,6 +19,9 @@ const CameraMatchaApp: React.FC = () => {
   const [step, setStep] = useState<Step>("scanning");
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [detectionResult, setDetectionResult] = useState<any>(null);
+  const [userScore, setUserScore] = useState<number | null>(null);
+  const [location, setLocation] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -93,6 +98,58 @@ const CameraMatchaApp: React.FC = () => {
     }
   };
 
+  // Prompt user for GPS location  
+  const handleGetLocation = async () => {
+    if (!navigator.geolocation) {
+      toast({ title: "Location not supported", description: "Your browser doesn't support geolocation." });
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        setLocation(`${pos.coords.latitude},${pos.coords.longitude}`);
+        toast({ title: "Location fetched", description: "Location attached to this rating." });
+      },
+      err => {
+        setLocation(null);
+        toast({ title: "Location error", description: "Could not get your position." });
+      }
+    );
+  };
+
+  // Save the rating/info to Supabase
+  const handleSaveRating = async () => {
+    if (!imageDataUrl || !detectionResult) return;
+    if (userScore == null) {
+      toast({ title: "Enter your own rating too!", description: "Please add your manual rating (0-10)" });
+      return;
+    }
+    setIsSaving(true);
+
+    // Upload the image to storage
+    const imgUrl = await uploadMatchaImage(imageDataUrl);
+    if (!imgUrl) {
+      setIsSaving(false);
+      toast({ title: "Image upload failed", description: "Could not store your photo." });
+      return;
+    }
+
+    // Insert the record
+    const res = await insertMatchaRating({
+      image_url: imgUrl,
+      ai_score: detectionResult.colorScore,
+      user_score: userScore,
+      location: location,
+    });
+
+    setIsSaving(false);
+    if (res) {
+      toast({ title: "Rating saved!", description: "Your matcha cup has been recorded!" });
+      handleRetake();
+    } else {
+      toast({ title: "Failed to save", description: "Could not store your rating." });
+    }
+  };
+
   return (
     <div className="w-full flex flex-col items-center gap-8">
       <div className="w-full flex flex-col gap-4 max-w-xs items-center mt-2">
@@ -130,11 +187,47 @@ const CameraMatchaApp: React.FC = () => {
           />
         )}
         {step === "done" && detectionResult && imageDataUrl && (
-          <MatchaRatingCard
-            imageDataUrl={imageDataUrl}
-            result={detectionResult}
-            onRetake={handleRetake}
-          />
+          <>
+            <MatchaRatingCard
+              imageDataUrl={imageDataUrl}
+              result={detectionResult}
+              onRetake={handleRetake}
+            />
+            <div className="w-80 mt-3 border rounded-lg bg-background/80 p-4 flex flex-col gap-2 items-stretch">
+              <Label htmlFor="user-rating" className="mb-1">Your own matcha rating (0–10):</Label>
+              <Input
+                id="user-rating"
+                type="number"
+                min={0}
+                max={10}
+                step={0.1}
+                value={userScore ?? ""}
+                onChange={e => setUserScore(Number(e.target.value))}
+                placeholder="Your rating"
+                className="mb-2"
+              />
+              <Label htmlFor="location" className="mb-1 flex items-center gap-2">
+                Location {location && <span className="text-xs text-green-600">(added)</span>}
+                <Button
+                  onClick={handleGetLocation}
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="ml-2"
+                >
+                  {location ? "Refresh" : "Add"} Location
+                </Button>
+              </Label>
+              <div className="flex flex-row justify-end gap-2 mt-2">
+                <Button variant="secondary" onClick={handleRetake} disabled={isSaving}>
+                  Retake
+                </Button>
+                <Button onClick={handleSaveRating} disabled={isSaving}>
+                  {isSaving ? "Saving..." : "Save Rating"}
+                </Button>
+              </div>
+            </div>
+          </>
         )}
       </div>
       <canvas ref={canvasRef} className="hidden" />
