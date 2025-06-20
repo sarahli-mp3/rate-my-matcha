@@ -214,31 +214,15 @@ const MatchaCupDetector: React.FC<Props> = ({
   }, [imageDataUrl, onResult]);
 
   return (
-    <div className="w-80 h-60 rounded-lg relative border bg-card overflow-hidden flex items-center justify-center">
-      <img
-        src={imageDataUrl}
-        alt="captured"
-        className={
-          loading
-            ? "opacity-40 blur-sm grayscale"
-            : "object-cover w-full h-full"
-        }
-      />
+    <div className="w-80 h-20 mt-4 rounded-lg relative flex items-center justify-center">
       {loading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 gap-1">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
           <span className="loader mb-2 animate-spin h-8 w-8 rounded-full border-4 border-green-300 border-t-green-700"></span>
           <span className="font-bold text-green-700 tracking-tight">
             Analyzing…
           </span>
         </div>
       )}
-      <button
-        type="button"
-        onClick={onRetake}
-        className="absolute right-2 top-2 rounded bg-white/70 text-sm text-foreground px-3 py-1 hover:bg-red-200 transition"
-      >
-        Retake
-      </button>
       <style>{`
         .loader {
           border-right-color: transparent;
