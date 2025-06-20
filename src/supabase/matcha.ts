@@ -1,4 +1,3 @@
-
 import { createClient } from "@supabase/supabase-js";
 
 // Use the explicit credentials from your project (see src/integrations/supabase/client.ts)
@@ -12,11 +11,13 @@ type MatchaRatingRecord = {
   image_url: string;
   ai_score: number;
   user_score: number;
-  location: string | null;
+  comment: string | null;
   created_at?: string;
 };
 
-export async function uploadMatchaImage(dataUrl: string): Promise<string | null> {
+export async function uploadMatchaImage(
+  dataUrl: string
+): Promise<string | null> {
   // Convert dataUrl to blob
   const res = await fetch(dataUrl);
   const blob = await res.blob();
@@ -25,8 +26,8 @@ export async function uploadMatchaImage(dataUrl: string): Promise<string | null>
   const { data, error } = await supabase.storage
     .from("matcha-images")
     .upload(fileName, blob, {
-      cacheControl: '3600',
-      contentType: 'image/png',
+      cacheControl: "3600",
+      contentType: "image/png",
       upsert: false,
     });
 
@@ -35,8 +36,7 @@ export async function uploadMatchaImage(dataUrl: string): Promise<string | null>
     return null;
   }
   // Return full public URL
-  const { data: publicUrlData } = supabase
-    .storage
+  const { data: publicUrlData } = supabase.storage
     .from("matcha-images")
     .getPublicUrl(data.path);
 
@@ -46,9 +46,23 @@ export async function uploadMatchaImage(dataUrl: string): Promise<string | null>
 export async function insertMatchaRating(record: MatchaRatingRecord) {
   const { data, error } = await supabase
     .from("matcha_ratings")
-    .insert([record]);
+    .insert([record])
+    .select();
   if (error) {
     console.error("Database insert error:", error);
+    return null;
+  }
+  return data;
+}
+
+export async function getAllMatchaRatings() {
+  const { data, error } = await supabase
+    .from("matcha_ratings")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Database fetch error:", error);
     return null;
   }
   return data;
