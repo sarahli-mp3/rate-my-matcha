@@ -7,36 +7,66 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 
 const Index = () => {
   const isMobile = useIsMobile();
+  const bgImage = isMobile ? "/matcha-bg-mobile.png" : "/matcha-bg-desktop.png";
+  const bgStyle = isMobile
+    ? {
+        backgroundImage: `url(${bgImage})`,
+        backgroundSize: "100% auto" as const,
+        backgroundPosition: "bottom center" as const,
+        backgroundRepeat: "no-repeat" as const,
+        imageRendering: "pixelated" as const,
+      }
+    : {
+        backgroundImage: `url(${bgImage})`,
+        backgroundSize: "cover" as const,
+        backgroundPosition: "center" as const,
+        imageRendering: "pixelated" as const,
+      };
 
   return (
-    <div className="min-h-screen w-full flex flex-col text-foreground">
+    <div
+      className={`min-h-screen w-full flex flex-col text-foreground ${
+        isMobile ? "pb-[env(safe-area-inset-bottom,34px)]" : ""
+      }`}
+      style={bgStyle}
+    >
       {isMobile ? (
         <div className="ui-overlay-mobile flex flex-col items-center">
-          <div className="flex flex-row items-center gap-4 mb-6">
-            <span className="inline-flex items-center gap-2 text-2xl font-bold text-green-700 tracking-tight">
-              Matcha Cup Rater
+          <div className="flex flex-row items-center gap-2 mb-1">
+            <span
+              className="inline-flex items-center gap-2 text-4xl font-bold tracking-tight"
+              style={{ color: "#648e44" }}
+            >
+              Rate My Matcha
             </span>
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/gallery">
-                <Images className="w-4 h-4 mr-2" />
-                Gallery
-              </Link>
-            </Button>
+            <Link to="/gallery" aria-label="Gallery">
+              <img
+                src="/matcha-cup.png"
+                alt="Gallery"
+                className="w-20 h-20"
+                style={{ imageRendering: "pixelated", display: "block" }}
+              />
+            </Link>
           </div>
           <CameraMatchaApp />
         </div>
       ) : (
         <div className="ui-overlay-desktop flex flex-col items-center">
-          <div className="flex flex-row items-center gap-6 mb-8">
-            <span className="inline-flex items-center gap-2 text-3xl font-bold text-green-700 tracking-tight">
-              Matcha Cup Rater
+          <div className="flex flex-row items-center gap-2 mb-3">
+            <span
+              className="inline-flex items-center gap-2 text-5xl font-bold tracking-tight"
+              style={{ color: "#648e44" }}
+            >
+              Rate My Matcha
             </span>
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/gallery">
-                <Images className="w-4 h-4 mr-2" />
-                Gallery
-              </Link>
-            </Button>
+            <Link to="/gallery" aria-label="Gallery">
+              <img
+                src="/matcha-cup.png"
+                alt="Gallery"
+                className="w-20 h-20"
+                style={{ imageRendering: "pixelated", display: "block" }}
+              />
+            </Link>
           </div>
           <CameraMatchaApp />
         </div>

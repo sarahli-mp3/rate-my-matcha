@@ -26,4 +26,12 @@ function updateBackgroundScale() {
 updateBackgroundScale();
 window.addEventListener("resize", updateBackgroundScale);
 
+// Set real viewport height for mobile Safari
+function setRealVh() {
+  const vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty("--vh", `${vh}px`);
+}
+window.addEventListener("resize", setRealVh);
+window.addEventListener("load", setRealVh);
+
 createRoot(document.getElementById("root")!).render(<App />);

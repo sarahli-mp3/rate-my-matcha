@@ -108,31 +108,11 @@
   body {
     @apply text-foreground;
     min-height: 100vh;
+    height: calc(var(--vh, 1vh) * 100);
     background-color: #bfd2a0;
     position: relative;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-  }
-
-  body::before {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: calc(var(--bg-width));
-    height: calc(var(--bg-height));
-    background-image: var(--bg-image);
-    background-size: 100% 100%;
-    background-repeat: no-repeat;
-    transform: translate(-50%, -50%) scale(var(--bg-scale));
-    transform-origin: center;
-    image-rendering: pixelated;
-    image-rendering: -moz-crisp-edges;
-    image-rendering: crisp-edges;
-    image-rendering: -webkit-optimize-contrast;
-    will-change: transform;
-    backface-visibility: hidden;
-    z-index: -1;
   }
 }
 
@@ -146,10 +126,10 @@
 
 /* Pixel art background scaling */
 :root {
-  --bg-scale: 4;
+  --bg-scale: 3;
   --bg-image: url("/matcha-bg-desktop.png");
-  --bg-width: 480px;
-  --bg-height: 270px;
+  --bg-width: 480px; /* Original pixel art width */
+  --bg-height: 270px; /* Original pixel art height */
 }
 
 @media (max-width: 600px) {
@@ -161,16 +141,23 @@
   }
   body::before {
     top: 0;
-    left: 50%;
-    transform: translateX(-50%) scale(var(--bg-scale));
+    left: 0;
+    width: 100vw;
+    height: calc(var(--vh, 1vh) * 100);
+    background-size: cover;
+    background-position: top center;
+    transform: none;
     transform-origin: top center;
+  }
+  body {
+    padding-bottom: env(safe-area-inset-bottom, 34px);
   }
 }
 
 .ui-overlay-desktop {
   position: absolute;
   left: 50%;
-  top: calc(50% - 285px);
+  top: calc(50% - 325px);
   transform: translateX(-50%);
   width: 100vw;
   z-index: 10;
@@ -182,7 +169,7 @@
 .ui-overlay-mobile {
   position: absolute;
   left: 50%;
-  top: calc(var(--bg-scale) * 40px);
+  top: calc(var(--bg-scale) * 64px);
   transform: translateX(-50%);
   width: 100vw;
   z-index: 10;
@@ -190,4 +177,11 @@
   flex-direction: column;
   align-items: center;
   padding-bottom: env(safe-area-inset-bottom, 34px);
+  padding-top: env(safe-area-inset-top, 20px);
+}
+
+.pixel-bg-wrapper {
+  height: calc(var(--vh, 1vh) * 100);
+  background-color: #c4da9c;
+  image-rendering: pixelated;
 }

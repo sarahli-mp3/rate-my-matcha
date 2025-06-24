@@ -35,7 +35,7 @@ const InteractiveStarRating: React.FC<{
     stars.push(
       <div
         key={i}
-        className="relative inline-block w-12 h-12 cursor-pointer"
+        className="relative inline-block w-9 h-9 cursor-pointer"
         onClick={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
           const isHalf = (e.clientX - rect.left) / rect.width <= 0.5;
@@ -49,12 +49,12 @@ const InteractiveStarRating: React.FC<{
         }}
         onMouseLeave={() => setHoverRating(0)}
       >
-        <img src="/star-empty.png" alt="Empty Star" className="w-12 h-12" />
+        <img src="/star-empty.png" alt="Empty Star" className="w-9 h-9" />
         {displayRating >= i - 0.5 && (
           <img
             src="/star-filled.png"
             alt="Filled Star"
-            className="absolute top-0 left-0 w-12 h-12"
+            className="absolute top-0 left-0 w-9 h-9"
             style={{
               clipPath:
                 displayRating >= i ? "inset(0 0 0 0)" : "inset(0 50% 0 0)",
@@ -66,12 +66,7 @@ const InteractiveStarRating: React.FC<{
   }
 
   return (
-    <div className="flex items-center gap-1">
-      <div className="flex items-center gap-2">{stars}</div>
-      <span className="ml-2 text-sm text-muted-foreground w-16">
-        {rating > 0 ? `${rating.toFixed(1)}/5` : ""}
-      </span>
-    </div>
+    <div className="flex justify-center items-center gap-2 w-full">{stars}</div>
   );
 };
 
@@ -108,7 +103,6 @@ const CameraMatchaApp: React.FC = () => {
         setStep("scanning");
       } catch (e) {
         setHasCamera(false);
-        setErrorMsg("Camera access denied or unavailable.");
         toast({
           title: "Camera unavailable",
           description: "Could not access the camera.",
@@ -332,49 +326,41 @@ const CameraMatchaApp: React.FC = () => {
           />
         )}
         {step === "done" && detectionResult && imageDataUrl && (
-          <div className="w-80 mt-3 border rounded-lg bg-background/80 p-4 flex flex-col gap-4 items-stretch">
-            <div className="flex flex-col gap-2 items-center">
+          <div className="w-80 mt-3 border rounded-lg bg-background/80 p-1 flex flex-col gap-4 items-stretch">
+            <div className="flex flex-col gap-1 items-center">
               <Label className="text-sm font-medium">Your matcha rating:</Label>
               <InteractiveStarRating
                 rating={userScore}
                 onRatingChange={setUserScore}
               />
-              {detectionResult.cupFound && (
-                <Badge
-                  variant={userScore >= 4 ? "default" : "secondary"}
-                  className="px-3 py-1 text-sm tracking-tight mt-1"
-                >
-                  {getRatingText(userScore)}
-                </Badge>
-              )}
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="comment" className="text-sm font-medium">
+              {/* <Label htmlFor="comment" className="text-sm font-medium">
                 Comment (optional):
-              </Label>
+              </Label> */}
               <Textarea
                 id="comment"
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 placeholder="Share your thoughts about this matcha..."
-                className="min-h-[80px] resize-none"
+                className="min-h-[60px] resize-none"
                 maxLength={500}
               />
-              <span className="text-xs text-muted-foreground text-right">
-                {comment.length}/500
-              </span>
             </div>
 
-            <Button
-              onClick={handleSaveRating}
-              disabled={isSaving || userScore === 0}
-              className="w-full"
-              variant="image"
-              size="xl"
-            >
-              {isSaving ? "Saving..." : "Save Rating"}
-            </Button>
+            {/* Center the Save Rating button */}
+            <div className="flex justify-center w-full">
+              <Button
+                onClick={handleSaveRating}
+                disabled={isSaving || userScore === 0}
+                className="w-40"
+                variant="image"
+                size="sm"
+              >
+                {isSaving ? "Saving..." : "Save Rating"}
+              </Button>
+            </div>
           </div>
         )}
       </div>
