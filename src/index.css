@@ -101,23 +101,23 @@
 
   body {
     @apply text-foreground;
-    height: 100vh;
+    min-height: 100vh;
     background-color: #bfd2a0;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
     position: relative;
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body::before {
     content: "";
-    position: fixed;
+    position: absolute;
     top: 50%;
     left: 50%;
-    width: 360px;
-    height: 256px;
-    background-image: url("/matcha-background.png");
-    background-size: 360px 256px;
+    width: calc(var(--bg-width));
+    height: calc(var(--bg-height));
+    background-image: var(--bg-image);
+    background-size: 100% 100%;
     background-repeat: no-repeat;
     transform: translate(-50%, -50%) scale(var(--bg-scale));
     transform-origin: center;
@@ -154,35 +154,10 @@
     --bg-width: 215px;
     --bg-height: 466px;
   }
-}
-
-body {
-  @apply text-foreground;
-  height: 100vh;
-  background-color: #bfd2a0;
-  position: relative;
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  width: calc(var(--bg-width));
-  height: calc(var(--bg-height));
-  background-image: var(--bg-image);
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
-  transform: translate(-50%, -50%) scale(var(--bg-scale));
-  transform-origin: center;
-  image-rendering: pixelated;
-  image-rendering: -moz-crisp-edges;
-  image-rendering: crisp-edges;
-  image-rendering: -webkit-optimize-contrast;
-  will-change: transform;
-  backface-visibility: hidden;
-  z-index: -1;
+  body::before {
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%) scale(var(--bg-scale));
+    transform-origin: top center;
+  }
 }
