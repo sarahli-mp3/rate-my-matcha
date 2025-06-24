@@ -182,11 +182,12 @@
 .ui-overlay-mobile {
   position: absolute;
   left: 50%;
-  top: calc(var(--bg-scale) * 60px);
+  top: calc(var(--bg-scale) * 40px);
   transform: translateX(-50%);
   width: 100vw;
   z-index: 10;
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding-bottom: env(safe-area-inset-bottom, 34px);
 }
