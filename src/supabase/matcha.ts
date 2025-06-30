@@ -1,3 +1,4 @@
+
 import { createClient } from "@supabase/supabase-js";
 
 // Use the explicit credentials from your project (see src/integrations/supabase/client.ts)
@@ -12,6 +13,7 @@ type MatchaRatingRecord = {
   ai_score: number;
   user_score: number;
   comment: string | null;
+  user_id?: string;
   created_at?: string;
 };
 
@@ -44,9 +46,18 @@ export async function uploadMatchaImage(
 }
 
 export async function insertMatchaRating(record: MatchaRatingRecord) {
+  // Get current user
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  // Add user_id to record if user is authenticated
+  const recordWithUser = {
+    ...record,
+    user_id: user?.id || null
+  };
+
   const { data, error } = await supabase
     .from("matcha_ratings")
-    .insert([record])
+    .insert([recordWithUser])
     .select();
   if (error) {
     console.error("Database insert error:", error);

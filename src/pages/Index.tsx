@@ -1,6 +1,8 @@
+
 import React from "react";
 import { Link } from "react-router-dom";
 import CameraMatchaApp from "@/components/CameraMatchaApp";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
 import { Button } from "@/components/ui/button";
 import { Images } from "lucide-react";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -30,6 +32,11 @@ const Index = () => {
       }`}
       style={bgStyle}
     >
+      {/* Subtle Google Sign-in positioned at top right */}
+      <div className="absolute top-4 right-4 z-20">
+        <GoogleSignInButton />
+      </div>
+
       {isMobile ? (
         <div className="ui-overlay-mobile flex flex-col items-center">
           <div className="flex flex-row items-center gap-2 mb-1">

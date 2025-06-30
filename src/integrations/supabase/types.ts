@@ -9,7 +9,60 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      matcha_ratings: {
+        Row: {
+          ai_score: number
+          comment: string | null
+          created_at: string | null
+          image_url: string
+          user_id: string | null
+          user_score: number | null
+        }
+        Insert: {
+          ai_score: number
+          comment?: string | null
+          created_at?: string | null
+          image_url: string
+          user_id?: string | null
+          user_score?: number | null
+        }
+        Update: {
+          ai_score?: number
+          comment?: string | null
+          created_at?: string | null
+          image_url?: string
+          user_id?: string | null
+          user_score?: number | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
