@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
 
 const getRatingText = (score: number) => {
   if (score === 0) return "No matcha cup found";
@@ -84,6 +85,7 @@ const CameraMatchaApp: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const { user, signInWithGoogle } = useAuth();
 
   // Start camera on mount
   useEffect(() => {
@@ -171,6 +173,14 @@ const CameraMatchaApp: React.FC = () => {
 
   // Save the rating/info to Supabase
   const handleSaveRating = async () => {
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to save your rating.",
+      });
+      return;
+    }
+
     if (!imageDataUrl || !detectionResult) return;
     if (userScore === 0) {
       toast({
@@ -336,9 +346,6 @@ const CameraMatchaApp: React.FC = () => {
             </div>
 
             <div className="flex flex-col gap-2">
-              {/* <Label htmlFor="comment" className="text-sm font-medium">
-                Comment (optional):
-              </Label> */}
               <Textarea
                 id="comment"
                 value={comment}
@@ -349,17 +356,33 @@ const CameraMatchaApp: React.FC = () => {
               />
             </div>
 
-            {/* Center the Save Rating button */}
+            {/* Show sign-in prompt or save button based on auth status */}
             <div className="flex justify-center w-full">
-              <Button
-                onClick={handleSaveRating}
-                disabled={isSaving || userScore === 0}
-                className="w-40"
-                variant="image"
-                size="sm"
-              >
-                {isSaving ? "Saving..." : "Save Rating"}
-              </Button>
+              {!user ? (
+                <div className="flex flex-col items-center gap-2">
+                  <p className="text-sm text-muted-foreground text-center">
+                    Sign in to save your rating
+                  </p>
+                  <Button
+                    onClick={signInWithGoogle}
+                    className="w-40"
+                    variant="outline"
+                    size="sm"
+                  >
+                    Sign in with Google
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  onClick={handleSaveRating}
+                  disabled={isSaving || userScore === 0}
+                  className="w-40"
+                  variant="image"
+                  size="sm"
+                >
+                  {isSaving ? "Saving..." : "Save Rating"}
+                </Button>
+              )}
             </div>
           </div>
         )}
