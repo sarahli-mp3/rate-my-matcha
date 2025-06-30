@@ -1,75 +1,14 @@
+
 import React, { useRef, useState, useEffect } from "react";
-import { Star } from "lucide-react";
 import MatchaCupDetector from "./MatchaCupDetector";
-import { Button } from "@/components/ui/button";
+import CameraControls from "./CameraControls";
+import RatingForm from "./RatingForm";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 import { insertMatchaRating, uploadMatchaImage } from "@/supabase/matcha";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 
-const getRatingText = (score: number) => {
-  if (score === 0) return "No matcha cup found";
-  if (score === 5) return "Top grade: Vibrant ceremonial!";
-  if (score >= 4) return "Great: Bright, latte-worthy green";
-  if (score >= 3) return "Average: Slightly dull, 2nd flush?";
-  if (score >= 2) return "Low: Faint green, maybe culinary";
-  return "Poor: Not matcha-signature color";
-};
-
 type Step = "scanning" | "processing" | "done";
-
-// Interactive Star Rating Component
-const InteractiveStarRating: React.FC<{
-  rating: number;
-  onRatingChange: (rating: number) => void;
-}> = ({ rating, onRatingChange }) => {
-  const [hoverRating, setHoverRating] = useState(0);
-
-  const stars = [];
-  const displayRating = hoverRating || rating;
-
-  for (let i = 1; i <= 5; i++) {
-    stars.push(
-      <div
-        key={i}
-        className="relative inline-block w-9 h-9 cursor-pointer"
-        onClick={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          const isHalf = (e.clientX - rect.left) / rect.width <= 0.5;
-          const newRating = isHalf ? i - 0.5 : i;
-          onRatingChange(newRating === rating ? 0 : newRating);
-        }}
-        onMouseMove={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          const isHalf = (e.clientX - rect.left) / rect.width <= 0.5;
-          setHoverRating(isHalf ? i - 0.5 : i);
-        }}
-        onMouseLeave={() => setHoverRating(0)}
-      >
-        <img src="/star-empty.png" alt="Empty Star" className="w-9 h-9" />
-        {displayRating >= i - 0.5 && (
-          <img
-            src="/star-filled.png"
-            alt="Filled Star"
-            className="absolute top-0 left-0 w-9 h-9"
-            style={{
-              clipPath:
-                displayRating >= i ? "inset(0 0 0 0)" : "inset(0 50% 0 0)",
-            }}
-          />
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex justify-center items-center gap-2 w-full">{stars}</div>
-  );
-};
 
 const CameraMatchaApp: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -85,7 +24,7 @@ const CameraMatchaApp: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const { user, signInWithGoogle } = useAuth();
+  const { user } = useAuth();
 
   // Start camera on mount
   useEffect(() => {
@@ -299,35 +238,17 @@ const CameraMatchaApp: React.FC = () => {
           )}
         </div>
 
-        <div className="flex gap-2 mt-4">
-          <Button
-            variant="image"
-            size="xl"
-            className="w-40"
-            onClick={imageDataUrl ? handleRetake : handleTakePhoto}
-            disabled={!imageDataUrl && (!hasCamera || step === "processing")}
-          >
-            {imageDataUrl ? "Retake" : "Capture"}
-          </Button>
-          {!imageDataUrl && (
-            <Button
-              variant="image"
-              size="xl"
-              className="w-40"
-              onClick={handleUploadClick}
-              disabled={step === "processing"}
-            >
-              Upload
-            </Button>
-          )}
-        </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleFileUpload}
-          className="hidden"
+        <CameraControls
+          hasCamera={hasCamera}
+          imageDataUrl={imageDataUrl}
+          step={step}
+          onTakePhoto={handleTakePhoto}
+          onRetake={handleRetake}
+          onUploadClick={handleUploadClick}
+          fileInputRef={fileInputRef}
+          onFileUpload={handleFileUpload}
         />
+
         {imageDataUrl && step === "processing" && (
           <MatchaCupDetector
             imageDataUrl={imageDataUrl}
@@ -335,56 +256,16 @@ const CameraMatchaApp: React.FC = () => {
             onRetake={handleRetake}
           />
         )}
+        
         {step === "done" && detectionResult && imageDataUrl && (
-          <div className="w-80 mt-3 border rounded-lg bg-background/80 p-1 flex flex-col gap-4 items-stretch">
-            <div className="flex flex-col gap-1 items-center">
-              <Label className="text-sm font-medium">Your matcha rating:</Label>
-              <InteractiveStarRating
-                rating={userScore}
-                onRatingChange={setUserScore}
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Textarea
-                id="comment"
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Share your thoughts about this matcha..."
-                className="min-h-[60px] resize-none"
-                maxLength={500}
-              />
-            </div>
-
-            {/* Show sign-in prompt or save button based on auth status */}
-            <div className="flex justify-center w-full">
-              {!user ? (
-                <div className="flex flex-col items-center gap-2">
-                  <p className="text-sm text-muted-foreground text-center">
-                    Sign in to save your rating
-                  </p>
-                  <Button
-                    onClick={signInWithGoogle}
-                    className="w-40"
-                    variant="outline"
-                    size="sm"
-                  >
-                    Sign in with Google
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  onClick={handleSaveRating}
-                  disabled={isSaving || userScore === 0}
-                  className="w-40"
-                  variant="image"
-                  size="sm"
-                >
-                  {isSaving ? "Saving..." : "Save Rating"}
-                </Button>
-              )}
-            </div>
-          </div>
+          <RatingForm
+            userScore={userScore}
+            onRatingChange={setUserScore}
+            comment={comment}
+            onCommentChange={setComment}
+            onSave={handleSaveRating}
+            isSaving={isSaving}
+          />
         )}
       </div>
       <canvas ref={canvasRef} className="hidden" />
